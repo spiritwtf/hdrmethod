@@ -4,55 +4,48 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#09090b">
-    <meta name="description" content="Convert BT.709 SDR videos to 10-bit HEVC Main 10 HDR10-compatible video locally in your browser." data-i18n-content="meta.description">
-    <title data-i18n="document.title">HDR Patcher — Local SDR to HDR10</title>
+    <meta name="description" content="Convert BT.709 SDR videos to 10-bit HEVC Main 10 HDR10-compatible video locally in your browser.">
+    <title>HDR Patcher — Local SDR to HDR10</title>
     <link rel="stylesheet" href="./css/style.css">
     <script type="module" src="./js/bootstrap.js"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#" aria-label="HDR Patcher home" data-i18n-aria-label="brand.home">
+      <a class="brand" href="#" aria-label="HDR Patcher home">
         <span class="brand-mark" aria-hidden="true">H</span>
         <span>HDR <span class="brand-light">PATCHER</span></span>
       </a>
-      <nav class="navigation" aria-label="Main navigation" data-i18n-aria-label="navigation.main">
-        <a class="nav-active" href="#" data-i18n="navigation.home">Home</a>
+      <nav class="navigation" aria-label="Main navigation">
+        <a class="nav-active" href="#">Home</a>
         <a href="https://github.com/spiritwtf/hdrmethod" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
-      <label class="language-control">
-        <span class="sr-only" data-i18n="language.label">Language</span>
-        <select id="language-select" aria-label="Language" data-i18n-aria-label="language.label">
-          <option value="en">EN</option>
-          <option value="ko">한국어</option>
-        </select>
-      </label>
     </header>
 
     <main>
       <section class="hero">
-        <div class="eyebrow"><span class="eyebrow-line"></span> <span data-i18n="hero.eyebrow">SDR TO HDR10 · IN YOUR BROWSER</span></div>
-        <h1><span data-i18n="hero.title.first">Enhance Your</span><br><span data-i18n="hero.title.second">Edit.</span></h1>
-        <p><span data-i18n="hero.description">Transform BT.709 SDR videos into 10-bit HEVC Main 10 HDR10-compatible video.</span><br class="desktop-break"> <span data-i18n="hero.privacy">Your video stays on your device, from start to finish.</span></p>
+        <div class="eyebrow"><span class="eyebrow-line"></span> SDR TO HDR10 · IN YOUR BROWSER</div>
+        <h1>Enhance Your<br><span>Video.</span></h1>
+        <p>Transform BT.709 SDR videos into 10-bit HEVC Main 10 HDR10-compatible video.<br class="desktop-break"> Your video stays on your device, from start to finish.</p>
       </section>
 
-      <section class="workspace" aria-label="Video converter" data-i18n-aria-label="workspace.label">
+      <section class="workspace" aria-label="Video converter">
         <div class="card upload-card">
           <div class="section-heading">
             <div>
               <span class="step-number">01</span>
-              <h2 data-i18n="steps.upload">Choose a video</h2>
+              <h2>Choose a video</h2>
             </div>
-            <span class="section-caption" data-i18n="upload.formats">MP4 · MKV · MOV · WEBM</span>
+            <span class="section-caption">MP4 · MKV · MOV · WEBM</span>
           </div>
-          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a video or drop it here" data-i18n-aria-label="upload.dropzone">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a video or drop it here">
             <input id="file-input" type="file" accept="video/*,.mkv,.mov,.mp4,.webm" hidden>
             <div class="upload-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <strong id="drop-title" data-i18n="upload.dropTitle">Drop your video here</strong>
-            <span id="drop-subtitle" data-i18n="upload.browse">or browse files from your device</span>
-            <button type="button" class="button button-secondary" id="choose-button" data-i18n="upload.button">Upload video</button>
-            <span class="upload-footnote" data-i18n="upload.footnote">Files are processed locally · No upload limits imposed by a server</span>
+            <strong id="drop-title">Drop your video here</strong>
+            <span id="drop-subtitle">or browse files from your device</span>
+            <button type="button" class="button button-secondary" id="choose-button">Upload video</button>
+            <span class="upload-footnote">Files are processed locally · No upload limits imposed by a server</span>
           </div>
           <div class="file-row hidden" id="file-row">
             <div class="file-type-icon" aria-hidden="true">VID</div>
@@ -60,7 +53,7 @@
               <strong id="file-name"></strong>
               <span id="file-size"></span>
             </div>
-            <button class="icon-button" id="remove-file" type="button" aria-label="Remove video" title="Remove video" data-i18n-aria-label="upload.remove" data-i18n-title="upload.remove">×</button>
+            <button class="icon-button" id="remove-file" type="button" aria-label="Remove video" title="Remove video">×</button>
           </div>
         </div>
 
@@ -68,19 +61,19 @@
           <div class="section-heading">
             <div>
               <span class="step-number">02</span>
-              <h2 data-i18n="steps.information">Video information</h2>
+              <h2>Video information</h2>
             </div>
-            <span class="section-caption" id="analysis-status" data-i18n="analysis.local">ANALYZING LOCALLY</span>
+            <span class="section-caption" id="analysis-status">ANALYZING LOCALLY</span>
           </div>
           <div class="metadata-grid">
-            <div class="metadata-item"><span data-i18n="analysis.resolution">Resolution</span><strong id="meta-resolution">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.fps">Frame rate</span><strong id="meta-fps">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.duration">Duration</span><strong id="meta-duration">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.codec">Video codec</span><strong id="meta-codec">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.bitrate">Video bitrate</span><strong id="meta-bitrate">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.color">Color / depth</span><strong id="meta-color">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.audio">Audio</span><strong id="meta-audio">—</strong></div>
-            <div class="metadata-item"><span data-i18n="analysis.pixelFormat">Pixel format</span><strong id="meta-pixfmt">—</strong></div>
+            <div class="metadata-item"><span>Resolution</span><strong id="meta-resolution">—</strong></div>
+            <div class="metadata-item"><span>Frame rate</span><strong id="meta-fps">—</strong></div>
+            <div class="metadata-item"><span>Duration</span><strong id="meta-duration">—</strong></div>
+            <div class="metadata-item"><span>Video codec</span><strong id="meta-codec">—</strong></div>
+            <div class="metadata-item"><span>Video bitrate</span><strong id="meta-bitrate">—</strong></div>
+            <div class="metadata-item"><span>Color / depth</span><strong id="meta-color">—</strong></div>
+            <div class="metadata-item"><span>Audio</span><strong id="meta-audio">—</strong></div>
+            <div class="metadata-item"><span>Pixel format</span><strong id="meta-pixfmt">—</strong></div>
           </div>
           <p class="notice hidden" id="compatibility-notice" role="status"></p>
         </div>
@@ -89,26 +82,26 @@
           <div class="section-heading">
             <div>
               <span class="step-number">03</span>
-              <h2 data-i18n="steps.settings">HDR settings</h2>
+              <h2>HDR settings</h2>
             </div>
             <span class="setting-value"><span id="intensity-value">50</span><small>%</small></span>
           </div>
           <div class="range-wrap">
-            <div class="range-labels"><span data-i18n="intensity.subtle">Subtle</span><span data-i18n="intensity.balanced">Balanced</span><span data-i18n="intensity.bold">Bold</span></div>
-            <input id="intensity" type="range" min="0" max="100" value="50" aria-label="HDR intensity" aria-valuetext="50 percent" data-i18n-aria-label="intensity.label">
+            <div class="range-labels"><span>Subtle</span><span>Balanced</span><span>Bold</span></div>
+            <input id="intensity" type="range" min="0" max="100" value="50" aria-label="HDR intensity" aria-valuetext="50 percent">
             <div class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           </div>
-          <p class="setting-hint" data-i18n="settings.peakHint">Sets the nominal HDR peak from 100 to 1000 nits. Even at 0%, SDR is converted to 10-bit BT.2020 / PQ.</p>
-          <p class="setting-hint" data-i18n="settings.runtimeHint">Uses multithreaded FFmpeg.wasm and libx265. Your browser must support service workers and cross-origin isolation; the first visit may reload once.</p>
+          <p class="setting-hint">Sets the nominal HDR peak from 100 to 1000 nits. Even at 0%, SDR is converted to 10-bit BT.2020 / PQ.</p>
+          <p class="setting-hint">Uses multithreaded FFmpeg.wasm and libx265. Your browser must support service workers and cross-origin isolation; the first visit may reload once.</p>
         </div>
 
         <div class="card preview-card">
           <div class="section-heading">
             <div>
               <span class="step-number">04</span>
-              <h2 data-i18n="steps.preview">Before / after</h2>
+              <h2>Before / after</h2>
             </div>
-            <button id="play-toggle" type="button" class="text-button" disabled><span id="play-toggle-icon" aria-hidden="true">▶</span> <span id="play-toggle-label" data-i18n="preview.play">Play preview</span></button>
+            <button id="play-toggle" type="button" class="text-button" disabled><span aria-hidden="true">▶</span> Play preview</button>
           </div>
           <div class="compare-frame" id="compare-frame">
             <video id="original-preview" class="compare-video" playsinline preload="metadata"></video>
@@ -117,16 +110,16 @@
             </div>
             <div class="preview-empty" id="preview-empty">
               <div class="preview-placeholder-icon" aria-hidden="true">▷</div>
-              <span data-i18n="preview.empty">Choose a video to preview it here</span>
+              <span>Choose a video to preview it here</span>
             </div>
-            <span class="video-label label-original" data-i18n="preview.original">ORIGINAL</span>
-            <span class="video-label label-hdr" data-i18n="preview.hdr">HDR10 PREVIEW</span>
+            <span class="video-label label-original">ORIGINAL</span>
+            <span class="video-label label-hdr">HDR10 PREVIEW</span>
             <div class="compare-divider hidden" id="compare-divider" aria-hidden="true"><span>↔</span></div>
           </div>
           <div class="compare-controls">
-            <label for="compare-range" data-i18n="preview.comparison">Comparison</label>
-            <input id="compare-range" type="range" min="0" max="100" value="50" aria-label="Before and after comparison split" data-i18n-aria-label="preview.comparisonAria" disabled>
-            <span class="compare-note" id="compare-note" data-i18n="preview.compareEmpty">Complete a conversion to compare</span>
+            <label for="compare-range">Comparison</label>
+            <input id="compare-range" type="range" min="0" max="100" value="50" aria-label="Before and after comparison split" disabled>
+            <span class="compare-note" id="compare-note">Complete a conversion to compare</span>
           </div>
         </div>
 
@@ -134,22 +127,22 @@
           <div class="section-heading">
             <div>
               <span class="step-number">05</span>
-              <h2 data-i18n="steps.processing">Convert to 10-bit HDR</h2>
+              <h2>Convert to 10-bit HDR</h2>
             </div>
             <span class="section-caption" id="elapsed-time">00:00</span>
           </div>
           <div class="process-status">
             <span class="status-dot" id="status-dot"></span>
-            <span id="process-status-text" data-i18n="process.ready">Ready when you are</span>
+            <span id="process-status-text">Ready when you are</span>
             <span id="progress-value">—</span>
           </div>
-          <div class="progress-track" role="progressbar" aria-label="Conversion progress" data-i18n-aria-label="process.progressAria" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track">
+          <div class="progress-track" role="progressbar" aria-label="Conversion progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track">
             <div class="progress-fill" id="progress-fill"></div>
           </div>
-          <p class="process-message" id="process-message" data-i18n="process.initialHint">Conversion runs on your device. Large files need substantial memory and processing time.</p>
+          <p class="process-message" id="process-message">Conversion runs on your device. Large files need substantial memory and processing time.</p>
           <div class="action-row">
-            <button id="start-button" type="button" class="button button-primary" disabled><span data-i18n="process.start">Start 10-bit processing</span> <span aria-hidden="true">→</span></button>
-            <button id="cancel-button" type="button" class="button button-secondary hidden" data-i18n="process.cancel">Cancel</button>
+            <button id="start-button" type="button" class="button button-primary" disabled>Start 10-bit processing <span aria-hidden="true">→</span></button>
+            <button id="cancel-button" type="button" class="button button-secondary hidden">Cancel</button>
           </div>
         </div>
 
@@ -157,16 +150,16 @@
           <div class="section-heading">
             <div>
               <span class="step-number">06</span>
-              <h2 data-i18n="export.heading">Your HDR10-compatible video is ready</h2>
+              <h2>Your HDR10-compatible video is ready</h2>
             </div>
-            <span class="complete-badge"><span>✓</span> <span data-i18n="export.completed">COMPLETED</span></span>
+            <span class="complete-badge"><span>✓</span> COMPLETED</span>
           </div>
           <video id="export-preview" class="export-video" controls playsinline></video>
           <div class="export-details">
             <div><strong id="output-name"></strong><span id="output-stats"></span></div>
-            <a id="download-button" class="button button-primary" download="video_HDR.mp4"><span data-i18n="export.download">Download video</span> <span aria-hidden="true">↓</span></a>
+            <a id="download-button" class="button button-primary" download="video_HDR.mp4">Download video <span aria-hidden="true">↓</span></a>
           </div>
-          <p class="setting-hint" data-i18n="export.note">Verified 10-bit HEVC Main 10 · BT.2020 · SMPTE ST 2084 (PQ). Mastering-display metadata is not synthesized; an 8-bit source has no extra source detail to recover.</p>
+          <p class="setting-hint">Verified 10-bit HEVC Main 10 · BT.2020 · SMPTE ST 2084 (PQ). Mastering-display metadata is not synthesized; an 8-bit source has no extra source detail to recover.</p>
         </div>
       </section>
     </main>
@@ -174,11 +167,11 @@
     <footer>
       <div class="footer-main">
         <a class="brand footer-brand" href="#"><span class="brand-mark" aria-hidden="true">H</span><span>HDR <span class="brand-light">PATCHER</span></span></a>
-        <p data-i18n="footer.privacy">Your videos never leave your device.</p>
-        <span data-i18n="footer.powered">100% Local Processing · Powered by FFmpeg.wasm</span>
+        <p>Your videos never leave your device.</p>
+        <span>100% Local Processing · Powered by FFmpeg.wasm</span>
       </div>
       <div class="footer-bottom">
-        <span data-i18n="footer.local">Video files are read and processed only in this browser tab.</span>
+        <span>Video files are read and processed only in this browser tab.</span>
         <a href="https://github.com/spiritwtf/hdrmethod" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </div>
     </footer>
