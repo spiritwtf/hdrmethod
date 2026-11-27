@@ -19,6 +19,7 @@ const elements = {
   infoCard: document.querySelector("#info-card"),
   analysisStatus: document.querySelector("#analysis-status"),
   compatibilityNotice: document.querySelector("#compatibility-notice"),
+  forceProcess: document.querySelector("#force-process"),
   intensity: document.querySelector("#intensity"),
   intensityValue: document.querySelector("#intensity-value"),
   originalPreview: document.querySelector("#original-preview"),
@@ -117,6 +118,7 @@ function setBusy(busy) {
   elements.startButton.disabled = busy || !isConvertible();
   elements.chooseButton.disabled = busy;
   elements.removeFile.disabled = busy;
+  elements.forceProcess.disabled = busy || !state.metadata;
   elements.cancelButton.classList.toggle("hidden", !busy);
   if (busy) {
     state.startedAt = Date.now();
@@ -130,12 +132,27 @@ function setBusy(busy) {
 }
 
 function isConvertible() {
+  const { width, height } = state.metadata || {};
   return Boolean(
     state.file
-    && state.metadata?.isSDR
-    && state.metadata.width % 2 === 0
-    && state.metadata.height % 2 === 0,
+    && state.metadata
+    && (state.metadata.isSDR || elements.forceProcess.checked)
+    && Number.isInteger(width)
+    && width > 0
+    && width % 2 === 0
+    && Number.isInteger(height)
+    && height > 0
+    && height % 2 === 0,
   );
+}
+
+function hasSupportedDimensions(metadata) {
+  return Number.isInteger(metadata.width)
+    && metadata.width > 0
+    && metadata.width % 2 === 0
+    && Number.isInteger(metadata.height)
+    && metadata.height > 0
+    && metadata.height % 2 === 0;
 }
 
 function safeInputName(file) {
@@ -157,26 +174,51 @@ function renderMetadata(metadata) {
     if (metadataElements[key]) metadataElements[key].textContent = value;
   });
   elements.analysisStatus.textContent = "ANALYSIS COMPLETE";
+  updateCompatibilityState();
+}
+
+function updateCompatibilityState() {
+  const metadata = state.metadata;
+  if (!metadata) return;
   elements.compatibilityNotice.classList.add("hidden");
-  if (metadata.colorMetadataInferred) {
+  if (!hasSupportedDimensions(metadata)) {
     elements.compatibilityNotice.textContent =
-      "The file has BT.709 matrix metadata but omits primaries and transfer tags. Those missing tags are treated as BT.709 SDR; confirm this matches the source.";
+      "This video needs known, even dimensions for 10-bit 4:2:0 HEVC. The converter will not resize the source video.";
+    elements.compatibilityNotice.classList.remove("hidden");
+  } else if (!metadata.isSDR && elements.forceProcess.checked) {
+    elements.compatibilityNotice.textContent =
+      "Forced processing assumes BT.709 SDR input. If this video is HDR or uses another color format, its converted colors and brightness may be incorrect.";
     elements.compatibilityNotice.classList.remove("hidden");
   } else if (!metadata.isSDR) {
     elements.compatibilityNotice.textContent =
-      "This video is HDR already, uses an unsupported color space, or has incomplete SDR metadata. It will not be converted.";
+      "This video is HDR already, uses an unsupported color space, or has incomplete SDR metadata. Enable force processing only if you know the source is SDR.";
     elements.compatibilityNotice.classList.remove("hidden");
-  } else if (metadata.width % 2 !== 0 || metadata.height % 2 !== 0) {
+  } else if (metadata.colorMetadataInferred) {
     elements.compatibilityNotice.textContent =
-      "10-bit 4:2:0 HEVC requires even dimensions. This converter will not resize the source video.";
+      "The file has BT.709 matrix metadata but omits primaries and transfer tags. Those missing tags are treated as BT.709 SDR; confirm this matches the source.";
     elements.compatibilityNotice.classList.remove("hidden");
   }
   elements.startButton.disabled = state.busy || !isConvertible();
+  if (state.busy) return;
+  if (!isConvertible()) {
+    setStatus(!hasSupportedDimensions(metadata) ? "Unsupported dimensions" : "Unsupported input");
+    elements.processMessage.textContent = !hasSupportedDimensions(metadata)
+      ? "10-bit 4:2:0 HEVC requires known, even video dimensions; the source will not be resized."
+      : "Only BT.709 SDR input can be converted unless force processing is enabled.";
+  } else if (!metadata.isSDR) {
+    setStatus("Ready to force convert");
+    elements.processMessage.textContent = "Forced conversion will interpret the source color metadata as BT.709 SDR.";
+  } else {
+    setStatus("Ready to convert");
+    elements.processMessage.textContent = "Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.";
+  }
 }
 
 function clearFileState() {
   if (state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
   state.sourceUrl = null;
+  elements.forceProcess.checked = false;
+  elements.forceProcess.disabled = true;
   state.file = null;
   state.sourceName = null;
   state.metadata = null;
@@ -251,16 +293,6 @@ async function selectFile(file) {
     if (generation !== state.generation) return;
     state.metadata = metadata;
     renderMetadata(metadata);
-    if (!metadata.isSDR) {
-      setStatus("Unsupported input");
-      elements.processMessage.textContent = "Only BT.709 SDR input with a supported bit depth can be converted.";
-    } else if (!isConvertible()) {
-      setStatus("Unsupported dimensions");
-      elements.processMessage.textContent = "10-bit 4:2:0 HEVC requires even video dimensions; the source will not be resized.";
-    } else {
-      setStatus("Ready to convert");
-      elements.processMessage.textContent = "Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.";
-    }
     clearIndeterminateProgress();
   } catch (error) {
     if (generation !== state.generation) return;
@@ -285,6 +317,7 @@ async function selectFile(file) {
         state.inputMounted = false;
       }
       setBusy(false);
+      if (state.metadata) updateCompatibilityState();
     }
   }
 }
@@ -327,6 +360,7 @@ async function startProcessing() {
       outputName,
       metadata,
       intensity,
+      forceColorMetadata: elements.forceProcess.checked,
       fileSize: file.size,
       signal: abortController.signal,
       onStatus: (message) => {
@@ -463,6 +497,7 @@ async function togglePreviewPlayback() {
   }
 }
 
+elements.forceProcess.disabled = true;
 elements.chooseButton.addEventListener("click", () => elements.fileInput.click());
 elements.dropzone.addEventListener("click", (event) => {
   if (event.target.closest("button")) return;
@@ -485,6 +520,7 @@ elements.removeFile.addEventListener("click", () => {
 });
 elements.startButton.addEventListener("click", startProcessing);
 elements.cancelButton.addEventListener("click", cancelProcessing);
+elements.forceProcess.addEventListener("change", updateCompatibilityState);
 elements.intensity.addEventListener("input", updateIntensity);
 elements.compareRange.addEventListener("input", updateComparison);
 elements.playToggle.addEventListener("click", togglePreviewPlayback);

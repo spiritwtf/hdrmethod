@@ -76,6 +76,11 @@ h2 { font-size: 15px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
 .metadata-item span { color: var(--muted); font-size: 10px; }
 .metadata-item strong { font: 11px "DM Mono", monospace; color: #e2e0e7; overflow-wrap: anywhere; }
 .notice { margin: 17px 0 0; border: 1px solid #55462d; border-radius: 7px; padding: 10px 12px; color: #e6c58e; font-size: 11px; line-height: 1.55; }
+.force-option { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; cursor: pointer; }
+.force-option input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent); flex: 0 0 auto; }
+.force-option span { display: grid; gap: 4px; }
+.force-option strong { color: #ddd9e7; font-size: 11px; font-weight: 500; }
+.force-option small { color: var(--muted); font-size: 10px; line-height: 1.5; }
 
 .setting-value { color: var(--accent-bright); font: 21px "DM Mono", monospace; letter-spacing: -.04em; }
 .setting-value small { font-size: 11px; margin-left: 2px; }

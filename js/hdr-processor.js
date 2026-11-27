@@ -44,11 +44,14 @@ export async function verifyHDR10Output(ffmpeg, outputName) {
   }
 }
 
-function conversionFilter(intensity) {
+function conversionFilter(intensity, assumeBT709Input) {
   const strength = Math.min(100, Math.max(0, Number(intensity))) / 100;
   const peakNits = Math.round(BASE_PEAK_NITS + (MAX_PEAK_NITS - BASE_PEAK_NITS) * strength);
+  const inputColorAssumption = assumeBT709Input
+    ? "primariesin=bt709:transferin=bt709:matrixin=bt709:"
+    : "";
   return [
-    "zscale=transfer=linear:matrix=gbr:npl=100",
+    `zscale=${inputColorAssumption}transfer=linear:matrix=gbr:npl=100`,
     "format=gbrp16le",
     `zscale=primaries=bt2020:transfer=smpte2084:matrix=bt2020nc:range=limited:npl=${peakNits}`,
     "format=yuv420p10le",
@@ -96,6 +99,7 @@ function encodingArguments({
   inputName,
   outputName,
   intensity,
+  forceColorMetadata,
   audioCodec,
 }) {
   return [
@@ -107,7 +111,7 @@ function encodingArguments({
     "-map", "0:a?",
     "-map_metadata", "0",
     "-map_chapters", "0",
-    "-vf", conversionFilter(intensity),
+    "-vf", conversionFilter(intensity, forceColorMetadata),
     "-fps_mode", "passthrough",
     "-c:v", "libx265",
     "-preset", "medium",
@@ -141,16 +145,24 @@ export async function processHDR10({
   outputName,
   metadata,
   intensity,
+  forceColorMetadata = false,
   fileSize,
   onProgress = () => {},
   onStatus = () => {},
   signal,
 }) {
   if (signal?.aborted) throw new Error("Video processing was canceled.");
-  if (!metadata?.isSDR) {
+  if (!metadata?.isSDR && !forceColorMetadata) {
     throw new Error("Only BT.709 SDR input can be converted to HDR10.");
   }
-  if (metadata.width % 2 !== 0 || metadata.height % 2 !== 0) {
+  if (
+    !Number.isInteger(metadata?.width)
+    || metadata.width <= 0
+    || metadata.width % 2 !== 0
+    || !Number.isInteger(metadata.height)
+    || metadata.height <= 0
+    || metadata.height % 2 !== 0
+  ) {
     throw new Error("10-bit 4:2:0 HEVC requires even dimensions. This converter will not resize the source video.");
   }
   if (fileSize > 512 * 1024 * 1024) {
@@ -166,6 +178,7 @@ export async function processHDR10({
     inputName,
     outputName,
     intensity,
+    forceColorMetadata: forceColorMetadata || metadata.colorMetadataInferred,
     audioCodec: audioCodecFor(metadata),
   });
   const result = await encodeWithFFmpeg(ffmpeg, baseArgs, metadata.duration, onProgress);
