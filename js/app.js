@@ -1,6 +1,6 @@
 import { getFFmpeg, terminateFFmpeg } from "./ffmpeg.js";
 import { analyzeVideo, mountInputFile, releaseInputFile, verifyDecoder } from "./video-analyzer.js";
-import { cancelHDRProcessing, processHDR10 } from "./hdr-processor.js";
+import { processHDR10 } from "./hdr-processor.js";
 import {
   formatBytes,
   formatDuration,
@@ -114,7 +114,7 @@ function updateElapsed() {
 
 function setBusy(busy) {
   state.busy = busy;
-  elements.startButton.disabled = busy || !state.file || !state.metadata?.isSDR;
+  elements.startButton.disabled = busy || !isConvertible();
   elements.chooseButton.disabled = busy;
   elements.removeFile.disabled = busy;
   elements.cancelButton.classList.toggle("hidden", !busy);
@@ -127,6 +127,15 @@ function setBusy(busy) {
     state.timer = null;
     state.startedAt = null;
   }
+}
+
+function isConvertible() {
+  return Boolean(
+    state.file
+    && state.metadata?.isSDR
+    && state.metadata.width % 2 === 0
+    && state.metadata.height % 2 === 0,
+  );
 }
 
 function safeInputName(file) {
@@ -157,8 +166,12 @@ function renderMetadata(metadata) {
     elements.compatibilityNotice.textContent =
       "This video is HDR already, uses an unsupported color space, or has incomplete SDR metadata. It will not be converted.";
     elements.compatibilityNotice.classList.remove("hidden");
+  } else if (metadata.width % 2 !== 0 || metadata.height % 2 !== 0) {
+    elements.compatibilityNotice.textContent =
+      "10-bit 4:2:0 HEVC requires even dimensions. This converter will not resize the source video.";
+    elements.compatibilityNotice.classList.remove("hidden");
   }
-  elements.startButton.disabled = !metadata.isSDR || state.busy;
+  elements.startButton.disabled = state.busy || !isConvertible();
 }
 
 function clearFileState() {
@@ -183,6 +196,7 @@ function clearFileState() {
   elements.compareDivider.classList.add("hidden");
   elements.compareOverlay.style.clipPath = "inset(0 0 0 50%)";
   clearOutput();
+  elements.compatibilityNotice.classList.add("hidden");
   elements.startButton.disabled = true;
   clearIndeterminateProgress();
   setStatus("Ready when you are");
@@ -219,7 +233,7 @@ async function selectFile(file) {
   elements.playToggle.disabled = false;
   elements.playToggle.innerHTML = '<span aria-hidden="true">▶</span> Play video';
   elements.startButton.disabled = true;
-  elements.processMessage.textContent = "Loading the single-threaded FFmpeg engine, then analyzing the video locally.";
+  elements.processMessage.textContent = "Loading the multithreaded FFmpeg engine, then analyzing the video locally.";
   setIndeterminateProgress();
   setStatus("Loading FFmpeg", "active");
   setBusy(true);
@@ -240,9 +254,12 @@ async function selectFile(file) {
     if (!metadata.isSDR) {
       setStatus("Unsupported input");
       elements.processMessage.textContent = "Only BT.709 SDR input with a supported bit depth can be converted.";
+    } else if (!isConvertible()) {
+      setStatus("Unsupported dimensions");
+      elements.processMessage.textContent = "10-bit 4:2:0 HEVC requires even video dimensions; the source will not be resized.";
     } else {
       setStatus("Ready to convert");
-      elements.processMessage.textContent = "HDR10-compatible output requires a HEVC Main 10 encoder. This app will not fall back to 8-bit output.";
+      elements.processMessage.textContent = "Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.";
     }
     clearIndeterminateProgress();
   } catch (error) {
@@ -273,7 +290,7 @@ async function selectFile(file) {
 }
 
 async function startProcessing() {
-  if (state.busy || !state.file || !state.metadata?.isSDR) return;
+  if (state.busy || !isConvertible()) return;
   const generation = ++state.generation;
   const file = state.file;
   let inputName = null;
@@ -285,9 +302,9 @@ async function startProcessing() {
   state.processingAbortController = abortController;
   clearOutput();
   setBusy(true);
-  setProgress(0);
+  setIndeterminateProgress();
   setStatus("Preparing HDR10 conversion", "active");
-  elements.processMessage.textContent = "Checking for a compatible HEVC Main 10 encoder.";
+  elements.processMessage.textContent = "Preparing the local multithreaded FFmpeg encoder.";
 
   try {
     await getFFmpeg();
@@ -304,9 +321,8 @@ async function startProcessing() {
     if (generation !== state.generation) return;
 
     setStatus("Processing HDR10 video", "active");
-    elements.processMessage.textContent = "Processing locally with WebGPU and the browser's HEVC Main 10 encoder.";
+    elements.processMessage.textContent = "Processing locally with zscale and the multithreaded libx265 encoder.";
     const output = await processHDR10({
-      file,
       inputName,
       outputName,
       metadata,
@@ -319,10 +335,18 @@ async function startProcessing() {
       },
       onProgress: ({ ratio }) => {
         if (generation !== state.generation) return;
-        if (ratio !== null && ratio >= 0 && ratio <= 1) setProgress(ratio * 100);
+        if (ratio !== null && ratio >= 0 && ratio <= 1) {
+          clearIndeterminateProgress();
+          setProgress(ratio * 100);
+        }
       },
     });
     if (generation !== state.generation) return;
+    terminateFFmpeg();
+    inputName = null;
+    inputMounted = false;
+    state.inputName = null;
+    state.inputMounted = false;
     setStatus("Finalizing output", "active");
     state.outputUrl = URL.createObjectURL(new Blob([output], { type: "video/mp4" }));
     const outputFilename = `${safeOutputBaseName(file.name)}_HDR10.mp4`;
@@ -338,6 +362,7 @@ async function startProcessing() {
     elements.compareDivider.classList.remove("hidden");
     elements.compareNote.textContent = "Drag to compare original and HDR10-compatible video";
     elements.playToggle.innerHTML = '<span aria-hidden="true">▶</span> Play preview';
+    clearIndeterminateProgress();
     setProgress(100);
     setStatus("Completed", "success");
     elements.processMessage.textContent =
@@ -348,9 +373,9 @@ async function startProcessing() {
   } catch (error) {
     if (generation !== state.generation) return;
     const message = error.message;
-    const encoderUnavailable = /HEVC Main 10 encoder/.test(message);
-    setStatus(encoderUnavailable ? "HDR10 unavailable" : "Conversion failed");
-    if (encoderUnavailable) {
+    const runtimeUnavailable = /cross-origin isolated|SharedArrayBuffer|service worker/i.test(message);
+    setStatus(runtimeUnavailable ? "HDR10 unavailable" : "Conversion failed");
+    if (runtimeUnavailable) {
       elements.compatibilityNotice.textContent = message;
       elements.compatibilityNotice.classList.remove("hidden");
     }
@@ -391,12 +416,6 @@ async function cancelProcessing() {
   state.generation += 1;
   state.processingAbortController?.abort();
   setBusy(false);
-  try {
-    await cancelHDRProcessing();
-  } catch (error) {
-    console.error("Could not cancel browser-accelerated conversion cleanly.", error);
-    showToast(`GPU cancellation did not finish cleanly: ${error.message}`);
-  }
   terminateFFmpeg();
   state.processingAbortController = null;
   state.inputName = null;
@@ -404,7 +423,7 @@ async function cancelProcessing() {
   clearIndeterminateProgress();
   setProgress(0);
   setStatus("Canceled");
-  elements.processMessage.textContent = "Processing was canceled and its browser workers were stopped. Start again to retry.";
+  elements.processMessage.textContent = "Processing was canceled and the FFmpeg worker was terminated. Start again to retry.";
   elements.elapsedTime.textContent = "00:00";
 }
 

@@ -2,10 +2,11 @@ const FFMPEG_VERSION = "0.12.15";
 const CORE_VERSION = "0.12.10";
 const FFMPEG_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@${FFMPEG_VERSION}/dist/esm`;
 const FFMPEG_MODULE = `${FFMPEG_BASE}/index.js`;
-const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${CORE_VERSION}/dist/esm`;
+const CORE_BASE = `https://cdn.jsdelivr.net/npm/@ffmpeg/core-mt@${CORE_VERSION}/dist/esm`;
 const CORE_ASSETS = [
   { url: `${CORE_BASE}/ffmpeg-core.js`, type: "text/javascript" },
   { url: `${CORE_BASE}/ffmpeg-core.wasm`, type: "application/wasm" },
+  { url: `${CORE_BASE}/ffmpeg-core.worker.js`, type: "text/javascript" },
 ];
 
 let ffmpegInstance = null;
@@ -46,6 +47,11 @@ export function getFFmpeg() {
     if (!("Worker" in globalThis) || !("WebAssembly" in globalThis)) {
       throw new Error("This browser does not support Web Workers and WebAssembly required for local conversion.");
     }
+    if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
+      throw new Error(
+        "This browser session is not cross-origin isolated. Enable service workers and reload the page to use the multithreaded HDR10 encoder.",
+      );
+    }
 
     const [{ FFmpeg }, ...assetUrls] = await Promise.all([
       import(FFMPEG_MODULE),
@@ -70,6 +76,7 @@ export function getFFmpeg() {
       classWorkerURL,
       coreURL: assetUrls[0],
       wasmURL: assetUrls[1],
+      workerURL: assetUrls[2],
     });
     releaseBlobUrls(localBlobUrls);
     return ffmpeg;

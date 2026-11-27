@@ -7,7 +7,7 @@
     <meta name="description" content="Convert BT.709 SDR videos to 10-bit HEVC Main 10 HDR10-compatible video locally in your browser.">
     <title>HDR Patcher — Local SDR to HDR10</title>
     <link rel="stylesheet" href="./css/style.css">
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/bootstrap.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -91,8 +91,8 @@
             <input id="intensity" type="range" min="0" max="100" value="50" aria-label="HDR intensity" aria-valuetext="50 percent">
             <div class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           </div>
-          <p class="setting-hint">Controls linear-light expansion and highlight roll-off. Even at 0%, SDR is converted to BT.2020 / PQ HDR.</p>
-          <p class="setting-hint">Requires a browser HEVC Main 10 encoder. Hardware encoding is preferred when available; unsupported devices are stopped instead of receiving 8-bit output.</p>
+          <p class="setting-hint">Sets the nominal HDR peak from 100 to 1000 nits. Even at 0%, SDR is converted to 10-bit BT.2020 / PQ.</p>
+          <p class="setting-hint">Uses multithreaded FFmpeg.wasm and libx265. Your browser must support service workers and cross-origin isolation; the first visit may reload once.</p>
         </div>
 
         <div class="card preview-card">
