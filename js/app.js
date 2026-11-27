@@ -1,6 +1,6 @@
 import { getFFmpeg, terminateFFmpeg } from "./ffmpeg.js";
 import { analyzeVideo, mountInputFile, releaseInputFile, verifyDecoder } from "./video-analyzer.js";
-import { processHDR } from "./hdr-processor.js";
+import { cancelHDRProcessing, processHDR10 } from "./hdr-processor.js";
 import {
   formatBytes,
   formatDuration,
@@ -71,6 +71,7 @@ const state = {
   timer: null,
   toastTimer: null,
   syncingPreview: false,
+  processingAbortController: null,
 };
 
 function showToast(message) {
@@ -198,8 +199,8 @@ async function selectFile(file) {
     showToast("Choose a non-empty video file (MP4, MKV, MOV, WEBM, or another FFmpeg-readable format).");
     return;
   }
-  if (file.size > 2 * 1024 * 1024 * 1024) {
-    showToast("This file exceeds the app's 2 GiB safety limit. Try a smaller video to avoid exhausting browser memory.");
+  if (file.size > 512 * 1024 * 1024) {
+    showToast("This file exceeds the HDR10 path's 512 MiB memory limit. Try a smaller video.");
     return;
   }
 
@@ -241,7 +242,7 @@ async function selectFile(file) {
       elements.processMessage.textContent = "Only BT.709 SDR input with a supported bit depth can be converted.";
     } else {
       setStatus("Ready to convert");
-      elements.processMessage.textContent = "The output will keep the source resolution, frame timing, and audio where compatible.";
+      elements.processMessage.textContent = "HDR10-compatible output requires a HEVC Main 10 encoder. This app will not fall back to 8-bit output.";
     }
     clearIndeterminateProgress();
   } catch (error) {
@@ -280,11 +281,13 @@ async function startProcessing() {
   const metadata = state.metadata;
   const outputName = "hdr-output.mp4";
   const intensity = Number(elements.intensity.value);
+  const abortController = new AbortController();
+  state.processingAbortController = abortController;
   clearOutput();
   setBusy(true);
   setProgress(0);
-  setStatus("Preparing HDR conversion", "active");
-  elements.processMessage.textContent = "Checking the FFmpeg filters and H.264 encoder required for PQ HDR output.";
+  setStatus("Preparing HDR10 conversion", "active");
+  elements.processMessage.textContent = "Checking for a compatible HEVC Main 10 encoder.";
 
   try {
     await getFFmpeg();
@@ -300,14 +303,20 @@ async function startProcessing() {
     await verifyDecoder(inputName);
     if (generation !== state.generation) return;
 
-    setStatus("Processing video", "active");
-    elements.processMessage.textContent = "Converting BT.709 SDR pixels to BT.2020 / PQ and encoding H.264. Progress appears when FFmpeg reports it.";
-    const output = await processHDR({
+    setStatus("Processing HDR10 video", "active");
+    elements.processMessage.textContent = "Processing locally with WebGPU and the browser's HEVC Main 10 encoder.";
+    const output = await processHDR10({
+      file,
       inputName,
       outputName,
       metadata,
       intensity,
       fileSize: file.size,
+      signal: abortController.signal,
+      onStatus: (message) => {
+        if (generation !== state.generation) return;
+        elements.processMessage.textContent = message;
+      },
       onProgress: ({ ratio }) => {
         if (generation !== state.generation) return;
         if (ratio !== null && ratio >= 0 && ratio <= 1) setProgress(ratio * 100);
@@ -316,7 +325,7 @@ async function startProcessing() {
     if (generation !== state.generation) return;
     setStatus("Finalizing output", "active");
     state.outputUrl = URL.createObjectURL(new Blob([output], { type: "video/mp4" }));
-    const outputFilename = `${safeOutputBaseName(file.name)}_HDR.mp4`;
+    const outputFilename = `${safeOutputBaseName(file.name)}_HDR10.mp4`;
     elements.exportPreview.src = state.outputUrl;
     elements.outputName.textContent = outputFilename;
     elements.outputStats.textContent = `${formatBytes(output.byteLength)} · ${metadata.display.resolution} · ${metadata.display.fps}`;
@@ -327,23 +336,31 @@ async function startProcessing() {
     elements.hdrPreview.load();
     elements.compareRange.disabled = false;
     elements.compareDivider.classList.remove("hidden");
-    elements.compareNote.textContent = "Drag to compare original and HDR";
+    elements.compareNote.textContent = "Drag to compare original and HDR10-compatible video";
     elements.playToggle.innerHTML = '<span aria-hidden="true">▶</span> Play preview';
     setProgress(100);
     setStatus("Completed", "success");
-    elements.processMessage.textContent = `Finished in ${formatDuration((Date.now() - state.startedAt) / 1000)}. Your output is available locally for preview and download.`;
+    elements.processMessage.textContent =
+      `Finished in ${formatDuration((Date.now() - state.startedAt) / 1000)}. Verified as 10-bit HEVC Main 10 with BT.2020/PQ signaling; mastering-display metadata is not synthesized.`;
     elements.elapsedTime.textContent = formatDuration((Date.now() - state.startedAt) / 1000);
     elements.playToggle.disabled = false;
     elements.exportCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) {
     if (generation !== state.generation) return;
-    setStatus("Conversion failed");
-    elements.processMessage.textContent = error.message;
-    showToast(error.message);
+    const message = error.message;
+    const encoderUnavailable = /HEVC Main 10 encoder/.test(message);
+    setStatus(encoderUnavailable ? "HDR10 unavailable" : "Conversion failed");
+    if (encoderUnavailable) {
+      elements.compatibilityNotice.textContent = message;
+      elements.compatibilityNotice.classList.remove("hidden");
+    }
+    elements.processMessage.textContent = message;
+    showToast(message);
   } finally {
     if (generation === state.generation) {
       if (inputName) await cleanupFFmpegFiles(inputName, inputMounted, outputName);
       setBusy(false);
+      state.processingAbortController = null;
     }
   }
 }
@@ -369,17 +386,25 @@ async function cleanupFFmpegFiles(inputName, inputMounted, outputName) {
   }
 }
 
-function cancelProcessing() {
+async function cancelProcessing() {
   if (!state.busy) return;
   state.generation += 1;
+  state.processingAbortController?.abort();
   setBusy(false);
+  try {
+    await cancelHDRProcessing();
+  } catch (error) {
+    console.error("Could not cancel browser-accelerated conversion cleanly.", error);
+    showToast(`GPU cancellation did not finish cleanly: ${error.message}`);
+  }
   terminateFFmpeg();
+  state.processingAbortController = null;
   state.inputName = null;
   state.inputMounted = false;
   clearIndeterminateProgress();
   setProgress(0);
   setStatus("Canceled");
-  elements.processMessage.textContent = "Processing was canceled and the FFmpeg worker was terminated. Start again to reload it.";
+  elements.processMessage.textContent = "Processing was canceled and its browser workers were stopped. Start again to retry.";
   elements.elapsedTime.textContent = "00:00";
 }
 

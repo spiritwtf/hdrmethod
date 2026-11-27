@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#09090b">
-    <meta name="description" content="Convert BT.709 SDR videos to PQ HDR locally in your browser.">
-    <title>HDR Patcher — Local SDR to HDR</title>
+    <meta name="description" content="Convert BT.709 SDR videos to 10-bit HEVC Main 10 HDR10-compatible video locally in your browser.">
+    <title>HDR Patcher — Local SDR to HDR10</title>
     <link rel="stylesheet" href="./css/style.css">
     <script type="module" src="./js/app.js"></script>
   </head>
@@ -23,9 +23,9 @@
 
     <main>
       <section class="hero">
-        <div class="eyebrow"><span class="eyebrow-line"></span> SDR TO HDR · IN YOUR BROWSER</div>
+        <div class="eyebrow"><span class="eyebrow-line"></span> SDR TO HDR10 · IN YOUR BROWSER</div>
         <h1>Enhance Your<br><span>Video.</span></h1>
-        <p>Transform BT.709 SDR videos into PQ HDR.<br class="desktop-break"> Your video stays on your device, from start to finish.</p>
+        <p>Transform BT.709 SDR videos into 10-bit HEVC Main 10 HDR10-compatible video.<br class="desktop-break"> Your video stays on your device, from start to finish.</p>
       </section>
 
       <section class="workspace" aria-label="Video converter">
@@ -92,7 +92,7 @@
             <div class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           </div>
           <p class="setting-hint">Controls linear-light expansion and highlight roll-off. Even at 0%, SDR is converted to BT.2020 / PQ HDR.</p>
-          <p class="setting-hint">Output is 8-bit H.264/PQ, not HDR10. 10-bit HEVC encoding is unavailable in this browser build.</p>
+          <p class="setting-hint">Requires a browser HEVC Main 10 encoder. Hardware encoding is preferred when available; unsupported devices are stopped instead of receiving 8-bit output.</p>
         </div>
 
         <div class="card preview-card">
@@ -113,7 +113,7 @@
               <span>Choose a video to preview it here</span>
             </div>
             <span class="video-label label-original">ORIGINAL</span>
-            <span class="video-label label-hdr">HDR PREVIEW</span>
+            <span class="video-label label-hdr">HDR10 PREVIEW</span>
             <div class="compare-divider hidden" id="compare-divider" aria-hidden="true"><span>↔</span></div>
           </div>
           <div class="compare-controls">
@@ -127,7 +127,7 @@
           <div class="section-heading">
             <div>
               <span class="step-number">05</span>
-              <h2>Convert to HDR</h2>
+              <h2>Convert to 10-bit HDR</h2>
             </div>
             <span class="section-caption" id="elapsed-time">00:00</span>
           </div>
@@ -141,7 +141,7 @@
           </div>
           <p class="process-message" id="process-message">Conversion runs on your device. Large files need substantial memory and processing time.</p>
           <div class="action-row">
-            <button id="start-button" type="button" class="button button-primary" disabled>Start processing <span aria-hidden="true">→</span></button>
+            <button id="start-button" type="button" class="button button-primary" disabled>Start 10-bit processing <span aria-hidden="true">→</span></button>
             <button id="cancel-button" type="button" class="button button-secondary hidden">Cancel</button>
           </div>
         </div>
@@ -150,7 +150,7 @@
           <div class="section-heading">
             <div>
               <span class="step-number">06</span>
-              <h2>Your HDR video is ready</h2>
+              <h2>Your HDR10-compatible video is ready</h2>
             </div>
             <span class="complete-badge"><span>✓</span> COMPLETED</span>
           </div>
@@ -159,7 +159,7 @@
             <div><strong id="output-name"></strong><span id="output-stats"></span></div>
             <a id="download-button" class="button button-primary" download="video_HDR.mp4">Download video <span aria-hidden="true">↓</span></a>
           </div>
-          <p class="setting-hint">8-bit H.264 · BT.2020 primaries · SMPTE ST 2084 (PQ). This single-thread browser build cannot reliably finish 10-bit HEVC encoding; 8-bit PQ can show banding and may not be recognized as HDR by every player. Conversion cannot restore detail absent from the source.</p>
+          <p class="setting-hint">Verified 10-bit HEVC Main 10 · BT.2020 · SMPTE ST 2084 (PQ). Mastering-display metadata is not synthesized; an 8-bit source has no extra source detail to recover.</p>
         </div>
       </section>
     </main>
