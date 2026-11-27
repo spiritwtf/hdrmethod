@@ -1,5 +1,4 @@
 import { getFFmpeg } from "./ffmpeg.js";
-import { t } from "./i18n.js";
 import { formatBitrate, formatDuration, formatFps, parseFrameRate } from "./utils.js";
 
 export async function mountInputFile(file, inputName) {
@@ -48,35 +47,6 @@ function parseJsonFile(bytes) {
 function positiveNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
-}
-
-export function formatVideoMetadata(metadata) {
-  const {
-    video,
-    audio,
-    width,
-    height,
-    duration,
-    frameRate,
-    bitrate,
-    colorSpace,
-    colorPrimaries,
-    colorTransfer,
-    pixelFormat,
-    bitDepth,
-  } = metadata;
-  return {
-    resolution: width && height ? `${width} × ${height}` : t("common.unknown"),
-    fps: formatFps(frameRate),
-    duration: formatDuration(duration),
-    codec: video.codec_name || t("common.unknown"),
-    bitrate: formatBitrate(bitrate),
-    color: `${colorSpace} / ${colorPrimaries} / ${colorTransfer} · ${bitDepth ? `${bitDepth}-bit` : t("common.depthUnknown")}`,
-    pixfmt: pixelFormat,
-    audio: audio.length
-      ? audio.map((stream) => `${stream.codec_name || t("analysis.audio")}${stream.channels ? ` · ${stream.channels} ${t("common.channels")}` : ""}`).join(", ")
-      : t("common.noAudio"),
-  };
 }
 
 export async function analyzeVideo(file, inputName) {
@@ -132,7 +102,7 @@ export async function analyzeVideo(file, inputName) {
       && !hdrTransfer;
     const isSDR = isBT709 && bitDepth !== null && bitDepth <= 10;
 
-    const metadata = {
+    return {
       raw,
       video,
       audio,
@@ -148,9 +118,19 @@ export async function analyzeVideo(file, inputName) {
       bitDepth,
       isSDR,
       colorMetadataInferred,
+      display: {
+        resolution: video.width && video.height ? `${video.width} × ${video.height}` : "Unknown",
+        fps: formatFps(frameRate),
+        duration: formatDuration(duration),
+        codec: video.codec_name || "Unknown",
+        bitrate: formatBitrate(bitrate),
+        color: `${colorSpace} / ${colorPrimaries} / ${colorTransfer} · ${bitDepth ? `${bitDepth}-bit` : "depth unknown"}`,
+        pixfmt: pixelFormat,
+        audio: audio.length
+          ? audio.map((stream) => `${stream.codec_name || "audio"}${stream.channels ? ` · ${stream.channels}ch` : ""}`).join(", ")
+          : "No audio",
+      },
     };
-    metadata.display = formatVideoMetadata(metadata);
-    return metadata;
   } finally {
     try {
       await ffmpeg.deleteFile(metadataName);

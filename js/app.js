@@ -1,13 +1,6 @@
 import { getFFmpeg, terminateFFmpeg } from "./ffmpeg.js";
-import {
-  analyzeVideo,
-  formatVideoMetadata,
-  mountInputFile,
-  releaseInputFile,
-  verifyDecoder,
-} from "./video-analyzer.js";
+import { analyzeVideo, mountInputFile, releaseInputFile, verifyDecoder } from "./video-analyzer.js";
 import { processHDR10 } from "./hdr-processor.js";
-import { getErrorTranslation, setText, t } from "./i18n.js";
 import {
   formatBytes,
   formatDuration,
@@ -36,8 +29,6 @@ const elements = {
   compareNote: document.querySelector("#compare-note"),
   previewEmpty: document.querySelector("#preview-empty"),
   playToggle: document.querySelector("#play-toggle"),
-  playToggleIcon: document.querySelector("#play-toggle-icon"),
-  playToggleLabel: document.querySelector("#play-toggle-label"),
   startButton: document.querySelector("#start-button"),
   cancelButton: document.querySelector("#cancel-button"),
   processStatus: document.querySelector("#process-status-text"),
@@ -74,7 +65,6 @@ const state = {
   metadata: null,
   sourceUrl: null,
   outputUrl: null,
-  outputSize: null,
   busy: false,
   generation: 0,
   startedAt: null,
@@ -84,28 +74,15 @@ const state = {
   processingAbortController: null,
 };
 
-function showToast(key, values = {}) {
-  setText(elements.toast, key, values);
+function showToast(message) {
+  elements.toast.textContent = message;
   elements.toast.classList.remove("hidden");
   clearTimeout(state.toastTimer);
   state.toastTimer = setTimeout(() => elements.toast.classList.add("hidden"), 7000);
 }
 
-function setErrorText(element, error) {
-  const translated = getErrorTranslation(error);
-  setText(element, translated.key, translated.values);
-  return translated;
-}
-
-function showErrorToast(error) {
-  setErrorText(elements.toast, error);
-  elements.toast.classList.remove("hidden");
-  clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => elements.toast.classList.add("hidden"), 7000);
-}
-
-function setStatus(key, mode = "idle") {
-  setText(elements.processStatus, key);
+function setStatus(message, mode = "idle") {
+  elements.processStatus.textContent = message;
   elements.statusDot.className = `status-dot${mode === "active" ? " active" : mode === "success" ? " success" : ""}`;
 }
 
@@ -169,32 +146,29 @@ function safeInputName(file) {
 function clearOutput() {
   if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
   state.outputUrl = null;
-  state.outputSize = null;
   elements.exportPreview.removeAttribute("src");
   elements.exportPreview.load();
   elements.downloadButton.removeAttribute("href");
   elements.exportCard.classList.add("hidden");
 }
 
-function renderMetadataValues(metadata) {
-  metadata.display = formatVideoMetadata(metadata);
+function renderMetadata(metadata) {
   Object.entries(metadata.display).forEach(([key, value]) => {
     if (metadataElements[key]) metadataElements[key].textContent = value;
   });
-}
-
-function renderMetadata(metadata) {
-  renderMetadataValues(metadata);
-  setText(elements.analysisStatus, "analysis.complete");
+  elements.analysisStatus.textContent = "ANALYSIS COMPLETE";
   elements.compatibilityNotice.classList.add("hidden");
   if (metadata.colorMetadataInferred) {
-    setText(elements.compatibilityNotice, "notice.inferred");
+    elements.compatibilityNotice.textContent =
+      "The file has BT.709 matrix metadata but omits primaries and transfer tags. Those missing tags are treated as BT.709 SDR; confirm this matches the source.";
     elements.compatibilityNotice.classList.remove("hidden");
   } else if (!metadata.isSDR) {
-    setText(elements.compatibilityNotice, "notice.unsupported");
+    elements.compatibilityNotice.textContent =
+      "This video is HDR already, uses an unsupported color space, or has incomplete SDR metadata. It will not be converted.";
     elements.compatibilityNotice.classList.remove("hidden");
   } else if (metadata.width % 2 !== 0 || metadata.height % 2 !== 0) {
-    setText(elements.compatibilityNotice, "notice.evenDimensions");
+    elements.compatibilityNotice.textContent =
+      "10-bit 4:2:0 HEVC requires even dimensions. This converter will not resize the source video.";
     elements.compatibilityNotice.classList.remove("hidden");
   }
   elements.startButton.disabled = state.busy || !isConvertible();
@@ -204,7 +178,6 @@ function clearFileState() {
   if (state.sourceUrl) URL.revokeObjectURL(state.sourceUrl);
   state.sourceUrl = null;
   state.file = null;
-  state.outputSize = null;
   state.sourceName = null;
   state.metadata = null;
   state.inputName = null;
@@ -219,29 +192,29 @@ function clearFileState() {
   elements.previewEmpty.classList.remove("hidden");
   elements.playToggle.disabled = true;
   elements.compareRange.disabled = true;
-  setText(elements.compareNote, "preview.compareEmpty");
+  elements.compareNote.textContent = "Complete a conversion to compare";
   elements.compareDivider.classList.add("hidden");
   elements.compareOverlay.style.clipPath = "inset(0 0 0 50%)";
   clearOutput();
   elements.compatibilityNotice.classList.add("hidden");
   elements.startButton.disabled = true;
   clearIndeterminateProgress();
-  setStatus("status.ready");
-  setText(elements.processMessage, "message.initial");
+  setStatus("Ready when you are");
+  elements.processMessage.textContent = "Conversion runs on your device. Large files need substantial memory and processing time.";
   elements.elapsedTime.textContent = "00:00";
 }
 
 async function selectFile(file) {
   if (state.busy) {
-    showToast("errors.busy");
+    showToast("Wait for the current video operation to finish or cancel it first.");
     return;
   }
   if (!isSupportedVideoFile(file)) {
-    showToast("errors.invalidVideo");
+    showToast("Choose a non-empty video file (MP4, MKV, MOV, WEBM, or another FFmpeg-readable format).");
     return;
   }
   if (file.size > 512 * 1024 * 1024) {
-    showToast("errors.fileTooLarge");
+    showToast("This file exceeds the HDR10 path's 512 MiB memory limit. Try a smaller video.");
     return;
   }
 
@@ -254,22 +227,22 @@ async function selectFile(file) {
   elements.fileSize.textContent = formatBytes(file.size);
   elements.fileRow.classList.remove("hidden");
   elements.infoCard.classList.remove("hidden");
-  setText(elements.analysisStatus, "analysis.loading");
+  elements.analysisStatus.textContent = "LOADING FFMPEG";
   elements.originalPreview.src = state.sourceUrl;
   elements.previewEmpty.classList.add("hidden");
   elements.playToggle.disabled = false;
-  updatePlayToggleLabel(false);
+  elements.playToggle.innerHTML = '<span aria-hidden="true">▶</span> Play video';
   elements.startButton.disabled = true;
-  setText(elements.processMessage, "message.loadingAnalysis");
+  elements.processMessage.textContent = "Loading the multithreaded FFmpeg engine, then analyzing the video locally.";
   setIndeterminateProgress();
-  setStatus("status.loading", "active");
+  setStatus("Loading FFmpeg", "active");
   setBusy(true);
 
   try {
     await getFFmpeg();
     if (generation !== state.generation) return;
-    setText(elements.analysisStatus, "analysis.working");
-    setStatus("status.analyzing", "active");
+    elements.analysisStatus.textContent = "ANALYZING LOCALLY";
+    setStatus("Analyzing video", "active");
     const mountedInput = await mountInputFile(file, state.sourceName);
     state.inputName = mountedInput.inputPath;
     state.inputMounted = mountedInput.mounted;
@@ -279,26 +252,26 @@ async function selectFile(file) {
     state.metadata = metadata;
     renderMetadata(metadata);
     if (!metadata.isSDR) {
-      setStatus("status.unsupportedInput");
-      setText(elements.processMessage, "message.onlySdr");
+      setStatus("Unsupported input");
+      elements.processMessage.textContent = "Only BT.709 SDR input with a supported bit depth can be converted.";
     } else if (!isConvertible()) {
-      setStatus("status.unsupportedDimensions");
-      setText(elements.processMessage, "message.evenDimensions");
+      setStatus("Unsupported dimensions");
+      elements.processMessage.textContent = "10-bit 4:2:0 HEVC requires even video dimensions; the source will not be resized.";
     } else {
-      setStatus("status.readyToConvert");
-      setText(elements.processMessage, "message.ready");
+      setStatus("Ready to convert");
+      elements.processMessage.textContent = "Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.";
     }
     clearIndeterminateProgress();
   } catch (error) {
     if (generation !== state.generation) return;
-    setText(elements.analysisStatus, "analysis.failed");
-    setErrorText(elements.compatibilityNotice, error);
+    elements.analysisStatus.textContent = "ANALYSIS FAILED";
+    elements.compatibilityNotice.textContent = error.message;
     elements.compatibilityNotice.classList.remove("hidden");
     elements.startButton.disabled = true;
-    setStatus("status.couldNotAnalyze");
-    setText(elements.processMessage, "message.retryAnalysis");
+    setStatus("Could not analyze video");
+    elements.processMessage.textContent = "Check that the file is a supported video and try again.";
     clearIndeterminateProgress();
-    showErrorToast(error);
+    showToast(error.message);
   } finally {
     if (generation === state.generation) {
       if (state.inputName) {
@@ -330,8 +303,8 @@ async function startProcessing() {
   clearOutput();
   setBusy(true);
   setIndeterminateProgress();
-  setStatus("status.preparing", "active");
-  setText(elements.processMessage, "message.preparing");
+  setStatus("Preparing HDR10 conversion", "active");
+  elements.processMessage.textContent = "Preparing the local multithreaded FFmpeg encoder.";
 
   try {
     await getFFmpeg();
@@ -342,13 +315,13 @@ async function startProcessing() {
     state.inputName = inputName;
     state.inputMounted = inputMounted;
     if (generation !== state.generation) return;
-    setStatus("status.verifying", "active");
-    setText(elements.processMessage, "message.decoding");
+    setStatus("Verifying video decoder", "active");
+    elements.processMessage.textContent = "Decoding a source frame to confirm this build can read the video codec.";
     await verifyDecoder(inputName);
     if (generation !== state.generation) return;
 
-    setStatus("status.processing", "active");
-    setText(elements.processMessage, "message.encoding");
+    setStatus("Processing HDR10 video", "active");
+    elements.processMessage.textContent = "Processing locally with zscale and the multithreaded libx265 encoder.";
     const output = await processHDR10({
       inputName,
       outputName,
@@ -358,7 +331,7 @@ async function startProcessing() {
       signal: abortController.signal,
       onStatus: (message) => {
         if (generation !== state.generation) return;
-        setText(elements.processMessage, message);
+        elements.processMessage.textContent = message;
       },
       onProgress: ({ ratio }) => {
         if (generation !== state.generation) return;
@@ -374,9 +347,8 @@ async function startProcessing() {
     inputMounted = false;
     state.inputName = null;
     state.inputMounted = false;
-    setStatus("status.finalizing", "active");
+    setStatus("Finalizing output", "active");
     state.outputUrl = URL.createObjectURL(new Blob([output], { type: "video/mp4" }));
-    state.outputSize = output.byteLength;
     const outputFilename = `${safeOutputBaseName(file.name)}_HDR10.mp4`;
     elements.exportPreview.src = state.outputUrl;
     elements.outputName.textContent = outputFilename;
@@ -388,28 +360,27 @@ async function startProcessing() {
     elements.hdrPreview.load();
     elements.compareRange.disabled = false;
     elements.compareDivider.classList.remove("hidden");
-    setText(elements.compareNote, "preview.compareReady");
-    updatePlayToggleLabel(false);
+    elements.compareNote.textContent = "Drag to compare original and HDR10-compatible video";
+    elements.playToggle.innerHTML = '<span aria-hidden="true">▶</span> Play preview';
     clearIndeterminateProgress();
     setProgress(100);
-    setStatus("status.completed", "success");
-    setText(elements.processMessage, "message.finished", {
-      duration: formatDuration((Date.now() - state.startedAt) / 1000),
-    });
+    setStatus("Completed", "success");
+    elements.processMessage.textContent =
+      `Finished in ${formatDuration((Date.now() - state.startedAt) / 1000)}. Verified as 10-bit HEVC Main 10 with BT.2020/PQ signaling; mastering-display metadata is not synthesized.`;
     elements.elapsedTime.textContent = formatDuration((Date.now() - state.startedAt) / 1000);
     elements.playToggle.disabled = false;
     elements.exportCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (error) {
     if (generation !== state.generation) return;
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error.message;
     const runtimeUnavailable = /cross-origin isolated|SharedArrayBuffer|service worker/i.test(message);
-    setStatus(runtimeUnavailable ? "status.unavailable" : "status.failed");
+    setStatus(runtimeUnavailable ? "HDR10 unavailable" : "Conversion failed");
     if (runtimeUnavailable) {
-      setErrorText(elements.compatibilityNotice, error);
+      elements.compatibilityNotice.textContent = message;
       elements.compatibilityNotice.classList.remove("hidden");
     }
-    setErrorText(elements.processMessage, error);
-    showErrorToast(error);
+    elements.processMessage.textContent = message;
+    showToast(message);
   } finally {
     if (generation === state.generation) {
       if (inputName) await cleanupFFmpegFiles(inputName, inputMounted, outputName);
@@ -451,24 +422,16 @@ async function cancelProcessing() {
   state.inputMounted = false;
   clearIndeterminateProgress();
   setProgress(0);
-  setStatus("status.canceled");
-  setText(elements.processMessage, "message.canceled");
+  setStatus("Canceled");
+  elements.processMessage.textContent = "Processing was canceled and the FFmpeg worker was terminated. Start again to retry.";
   elements.elapsedTime.textContent = "00:00";
 }
 
 function updateIntensity() {
   const value = Number(elements.intensity.value);
   elements.intensityValue.textContent = String(value);
-  elements.intensity.setAttribute("aria-valuetext", t("intensity.ariaValue", { value }));
+  elements.intensity.setAttribute("aria-valuetext", `${value} percent`);
   elements.intensity.style.background = `linear-gradient(90deg, var(--accent) 0%, var(--accent) ${value}%, #303038 ${value}%, #303038 100%)`;
-}
-
-function updatePlayToggleLabel(isPlaying) {
-  elements.playToggleIcon.textContent = isPlaying ? "Ⅱ" : "▶";
-  const key = state.outputUrl
-    ? (isPlaying ? "preview.pause" : "preview.play")
-    : (isPlaying ? "preview.pauseVideo" : "preview.playVideo");
-  setText(elements.playToggleLabel, key);
 }
 
 function updateComparison() {
@@ -485,16 +448,18 @@ async function togglePreviewPlayback() {
         elements.hdrPreview.currentTime = elements.originalPreview.currentTime;
         await elements.hdrPreview.play();
       }
-      updatePlayToggleLabel(true);
+      elements.playToggle.innerHTML = state.outputUrl
+        ? '<span aria-hidden="true">Ⅱ</span> Pause preview'
+        : '<span aria-hidden="true">Ⅱ</span> Pause video';
     } catch (error) {
-      showToast("errors.previewDetails", {
-        details: error instanceof Error ? error.message : String(error),
-      });
+      showToast(`Preview playback failed: ${error.message}`);
     }
   } else {
     elements.originalPreview.pause();
     elements.hdrPreview.pause();
-    updatePlayToggleLabel(false);
+    elements.playToggle.innerHTML = state.outputUrl
+      ? '<span aria-hidden="true">▶</span> Play preview'
+      : '<span aria-hidden="true">▶</span> Play video';
   }
 }
 
@@ -523,16 +488,6 @@ elements.cancelButton.addEventListener("click", cancelProcessing);
 elements.intensity.addEventListener("input", updateIntensity);
 elements.compareRange.addEventListener("input", updateComparison);
 elements.playToggle.addEventListener("click", togglePreviewPlayback);
-document.addEventListener("app-language-change", () => {
-  updateIntensity();
-  if (state.file) elements.fileSize.textContent = formatBytes(state.file.size);
-  if (state.metadata) renderMetadataValues(state.metadata);
-  if (state.outputSize !== null && state.metadata) {
-    elements.outputStats.textContent =
-      `${formatBytes(state.outputSize)} · ${state.metadata.display.resolution} · ${state.metadata.display.fps}`;
-  }
-  updatePlayToggleLabel(!elements.originalPreview.paused);
-});
 elements.originalPreview.addEventListener("timeupdate", () => {
   if (state.syncingPreview || elements.hdrPreview.readyState < 2) return;
   if (Math.abs(elements.hdrPreview.currentTime - elements.originalPreview.currentTime) > 0.12) {
@@ -543,10 +498,12 @@ elements.originalPreview.addEventListener("timeupdate", () => {
 });
 elements.originalPreview.addEventListener("ended", () => {
   elements.hdrPreview.pause();
-  updatePlayToggleLabel(false);
+  elements.playToggle.innerHTML = state.outputUrl
+    ? '<span aria-hidden="true">▶</span> Play preview'
+    : '<span aria-hidden="true">▶</span> Play video';
 });
 elements.originalPreview.addEventListener("error", () => {
-  if (state.file) showToast("errors.previewUnsupported");
+  if (state.file) showToast("This browser cannot preview the source video codec. FFmpeg may still be able to analyze and convert it.");
 });
 elements.originalPreview.addEventListener("play", () => {
   if (state.outputUrl) elements.hdrPreview.play().catch(() => {});

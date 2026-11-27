@@ -159,7 +159,7 @@ export async function processHDR10({
 
   const ffmpeg = await getFFmpeg();
   if (signal?.aborted) throw new Error("Video processing was canceled.");
-  onStatus("message.converting");
+  onStatus("Converting BT.709 SDR to 10-bit BT.2020/PQ and encoding with x265");
   await ffmpeg.deleteFile(outputName).catch(() => {});
 
   const baseArgs = encodingArguments({
@@ -175,7 +175,7 @@ export async function processHDR10({
   }
 
   if (signal?.aborted) throw new Error("Video processing was canceled.");
-  onStatus("message.verifying");
+  onStatus("Verifying 10-bit HEVC Main 10 and HDR color signaling");
   await verifyHDR10Output(ffmpeg, outputName);
   const output = await ffmpeg.readFile(outputName);
   if (!(output instanceof Uint8Array) || output.byteLength === 0) {

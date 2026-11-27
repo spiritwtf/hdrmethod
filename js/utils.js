@@ -1,7 +1,5 @@
-import { getNumberLocale, t } from "./i18n.js";
-
 export function formatBytes(bytes) {
-  if (!Number.isFinite(bytes) || bytes < 0) return t("common.unknownSize");
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown size";
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB", "TB"];
   let value = bytes;
@@ -10,14 +8,11 @@ export function formatBytes(bytes) {
     value /= 1024;
     unitIndex += 1;
   } while (value >= 1024 && unitIndex < units.length - 1);
-  const formatted = new Intl.NumberFormat(getNumberLocale(), {
-    maximumFractionDigits: value >= 100 ? 0 : 1,
-  }).format(value);
-  return `${formatted} ${units[unitIndex]}`;
+  return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 export function formatDuration(seconds) {
-  if (!Number.isFinite(seconds) || seconds < 0) return t("common.unknown");
+  if (!Number.isFinite(seconds) || seconds < 0) return "Unknown";
   const total = Math.floor(seconds);
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
@@ -28,12 +23,8 @@ export function formatDuration(seconds) {
 }
 
 export function formatBitrate(bitsPerSecond) {
-  if (!Number.isFinite(bitsPerSecond) || bitsPerSecond <= 0) return t("common.unknown");
-  const bitrate = new Intl.NumberFormat(getNumberLocale(), {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(bitsPerSecond / 1_000_000);
-  return `${bitrate} Mbps`;
+  if (!Number.isFinite(bitsPerSecond) || bitsPerSecond <= 0) return "Unknown";
+  return `${(bitsPerSecond / 1_000_000).toFixed(2)} Mbps`;
 }
 
 export function safeOutputBaseName(filename) {
@@ -56,8 +47,8 @@ export function parseFrameRate(value) {
 }
 
 export function formatFps(rate) {
-  if (!Number.isFinite(rate) || rate <= 0) return t("common.unknown");
-  return `${new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 3 }).format(rate)} fps`;
+  if (!Number.isFinite(rate) || rate <= 0) return "Unknown";
+  return `${Number(rate.toFixed(3))} fps`;
 }
 
 export function isSupportedVideoFile(file) {

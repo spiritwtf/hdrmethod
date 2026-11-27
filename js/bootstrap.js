@@ -1,7 +1,3 @@
-import { initializeI18n } from "./i18n.js";
-
-initializeI18n();
-
 function withTimeout(promise, milliseconds) {
   let timer;
   return Promise.race([
