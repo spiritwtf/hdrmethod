@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#09090b">
+    <meta name="description" content="Convert BT.709 SDR videos to PQ HDR locally in your browser.">
+    <title>HDR Patcher — Local SDR to HDR</title>
+    <link rel="stylesheet" href="./css/style.css">
+    <script type="module" src="./js/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="HDR Patcher home">
+        <span class="brand-mark" aria-hidden="true">H</span>
+        <span>HDR <span class="brand-light">PATCHER</span></span>
+      </a>
+      <nav class="navigation" aria-label="Main navigation">
+        <a class="nav-active" href="#">Home</a>
+        <a href="#about">About</a>
+        <a href="https://github.com/" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+      <span class="local-indicator"><span></span> LOCAL PROCESSING</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow"><span class="eyebrow-line"></span> SDR TO HDR · IN YOUR BROWSER</div>
+        <h1>Enhance Your<br><span>Video.</span></h1>
+        <p>Transform BT.709 SDR videos into PQ HDR.<br class="desktop-break"> Your video stays on your device, from start to finish.</p>
+      </section>
+
+      <section class="workspace" aria-label="Video converter">
+        <div class="card upload-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">01</span>
+              <h2>Choose a video</h2>
+            </div>
+            <span class="section-caption">MP4 · MKV · MOV · WEBM</span>
+          </div>
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose a video or drop it here">
+            <input id="file-input" type="file" accept="video/*,.mkv,.mov,.mp4,.webm" hidden>
+            <div class="upload-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <strong id="drop-title">Drop your video here</strong>
+            <span id="drop-subtitle">or browse files from your device</span>
+            <button type="button" class="button button-secondary" id="choose-button">Upload video</button>
+            <span class="upload-footnote">Files are processed locally · No upload limits imposed by a server</span>
+          </div>
+          <div class="file-row hidden" id="file-row">
+            <div class="file-type-icon" aria-hidden="true">VID</div>
+            <div class="file-details">
+              <strong id="file-name"></strong>
+              <span id="file-size"></span>
+            </div>
+            <button class="icon-button" id="remove-file" type="button" aria-label="Remove video" title="Remove video">×</button>
+          </div>
+        </div>
+
+        <div class="card info-card hidden" id="info-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">02</span>
+              <h2>Video information</h2>
+            </div>
+            <span class="section-caption" id="analysis-status">ANALYZING LOCALLY</span>
+          </div>
+          <div class="metadata-grid">
+            <div class="metadata-item"><span>Resolution</span><strong id="meta-resolution">—</strong></div>
+            <div class="metadata-item"><span>Frame rate</span><strong id="meta-fps">—</strong></div>
+            <div class="metadata-item"><span>Duration</span><strong id="meta-duration">—</strong></div>
+            <div class="metadata-item"><span>Video codec</span><strong id="meta-codec">—</strong></div>
+            <div class="metadata-item"><span>Video bitrate</span><strong id="meta-bitrate">—</strong></div>
+            <div class="metadata-item"><span>Color / depth</span><strong id="meta-color">—</strong></div>
+            <div class="metadata-item"><span>Audio</span><strong id="meta-audio">—</strong></div>
+            <div class="metadata-item"><span>Pixel format</span><strong id="meta-pixfmt">—</strong></div>
+          </div>
+          <p class="notice hidden" id="compatibility-notice" role="status"></p>
+        </div>
+
+        <div class="card settings-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">03</span>
+              <h2>HDR settings</h2>
+            </div>
+            <span class="setting-value"><span id="intensity-value">50</span><small>%</small></span>
+          </div>
+          <div class="range-wrap">
+            <div class="range-labels"><span>Subtle</span><span>Balanced</span><span>Bold</span></div>
+            <input id="intensity" type="range" min="0" max="100" value="50" aria-label="HDR intensity" aria-valuetext="50 percent">
+            <div class="range-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <p class="setting-hint">Controls linear-light expansion and highlight roll-off. Even at 0%, SDR is converted to BT.2020 / PQ HDR.</p>
+          <p class="setting-hint">Output is 8-bit H.264/PQ, not HDR10. 10-bit HEVC encoding is unavailable in this browser build.</p>
+        </div>
+
+        <div class="card preview-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">04</span>
+              <h2>Before / after</h2>
+            </div>
+            <button id="play-toggle" type="button" class="text-button" disabled><span aria-hidden="true">▶</span> Play preview</button>
+          </div>
+          <div class="compare-frame" id="compare-frame">
+            <video id="original-preview" class="compare-video" playsinline preload="metadata"></video>
+            <div class="compare-overlay" id="compare-overlay">
+              <video id="hdr-preview" class="compare-video" playsinline preload="metadata"></video>
+            </div>
+            <div class="preview-empty" id="preview-empty">
+              <div class="preview-placeholder-icon" aria-hidden="true">▷</div>
+              <span>Choose a video to preview it here</span>
+            </div>
+            <span class="video-label label-original">ORIGINAL</span>
+            <span class="video-label label-hdr">HDR PREVIEW</span>
+            <div class="compare-divider hidden" id="compare-divider" aria-hidden="true"><span>↔</span></div>
+          </div>
+          <div class="compare-controls">
+            <label for="compare-range">Comparison</label>
+            <input id="compare-range" type="range" min="0" max="100" value="50" aria-label="Before and after comparison split" disabled>
+            <span class="compare-note" id="compare-note">Complete a conversion to compare</span>
+          </div>
+        </div>
+
+        <div class="card process-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">05</span>
+              <h2>Convert to HDR</h2>
+            </div>
+            <span class="section-caption" id="elapsed-time">00:00</span>
+          </div>
+          <div class="process-status">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="process-status-text">Ready when you are</span>
+            <span id="progress-value">—</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-label="Conversion progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <p class="process-message" id="process-message">Conversion runs on your device. Large files need substantial memory and processing time.</p>
+          <div class="action-row">
+            <button id="start-button" type="button" class="button button-primary" disabled>Start processing <span aria-hidden="true">→</span></button>
+            <button id="cancel-button" type="button" class="button button-secondary hidden">Cancel</button>
+          </div>
+        </div>
+
+        <div class="card export-card hidden" id="export-card">
+          <div class="section-heading">
+            <div>
+              <span class="step-number">06</span>
+              <h2>Your HDR video is ready</h2>
+            </div>
+            <span class="complete-badge"><span>✓</span> COMPLETED</span>
+          </div>
+          <video id="export-preview" class="export-video" controls playsinline></video>
+          <div class="export-details">
+            <div><strong id="output-name"></strong><span id="output-stats"></span></div>
+            <a id="download-button" class="button button-primary" download="video_HDR.mp4">Download video <span aria-hidden="true">↓</span></a>
+          </div>
+          <p class="setting-hint">8-bit H.264 · BT.2020 primaries · SMPTE ST 2084 (PQ). This single-thread browser build cannot reliably finish 10-bit HEVC encoding; 8-bit PQ can show banding and may not be recognized as HDR by every player. Conversion cannot restore detail absent from the source.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer id="about">
+      <div class="footer-main">
+        <a class="brand footer-brand" href="#"><span class="brand-mark" aria-hidden="true">H</span><span>HDR <span class="brand-light">PATCHER</span></span></a>
+        <p>Your videos never leave your device.</p>
+        <span>100% Local Processing · Powered by FFmpeg.wasm</span>
+      </div>
+      <div class="footer-bottom">
+        <span>Video files are read and processed only in this browser tab.</span>
+        <a href="https://github.com/" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </footer>
+    <div class="toast hidden" id="toast" role="alert"></div>
+  </body>
+</html>
