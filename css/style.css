@@ -31,8 +31,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-vis
 .navigation { display: flex; align-items: center; gap: 30px; color: var(--muted); font-size: 13px; }
 .navigation a:hover, .footer-bottom a:hover { color: var(--text); }
 .navigation .nav-active { color: var(--text); }
-.local-indicator { display: flex; align-items: center; gap: 8px; margin-left: auto; font: 10px "DM Mono", monospace; letter-spacing: .08em; color: #9b9ba3; }
-.local-indicator span, .status-dot { display: inline-block; border-radius: 50%; width: 7px; height: 7px; background: var(--green); box-shadow: 0 0 9px #83d6ae66; }
+.status-dot { display: inline-block; border-radius: 50%; width: 7px; height: 7px; background: var(--green); box-shadow: 0 0 9px #83d6ae66; }
 
 main { width: min(100% - 40px, 760px); margin: 0 auto; }
 .hero { padding: 78px 0 43px; }
@@ -146,8 +145,6 @@ footer { border-top: 1px solid #1e1e22; padding: 28px max(6.5vw, calc((100vw - 1
   .brand { font-size: 11px; }
   .brand-mark { width: 23px; height: 23px; }
   .navigation { gap: 15px; font-size: 11px; }
-  .navigation a:nth-child(2) { display: none; }
-  .local-indicator { font-size: 0; gap: 0; }
   main { width: min(100% - 30px, 760px); }
   .hero { padding: 57px 0 31px; }
   .hero p { font-size: 13px; }
