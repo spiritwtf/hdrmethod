@@ -146,10 +146,10 @@ footer { border-top: 1px solid #1e1e22; padding: 28px max(6.5vw, calc((100vw - 1
 @keyframes progress-sweep { to { transform: translateX(185%); } }
 
 @media (max-width: 620px) {
-  .topbar { height: 62px; padding: 0 20px; gap: 18px; }
+  .topbar { height: auto; min-height: 62px; padding: 10px 20px; gap: 12px; flex-wrap: wrap; }
   .brand { font-size: 11px; }
   .brand-mark { width: 23px; height: 23px; }
-  .navigation { gap: 15px; font-size: 11px; }
+  .navigation { flex: 1 1 150px; flex-wrap: wrap; justify-content: flex-end; gap: 8px 12px; font-size: 10px; }
   main { width: min(100% - 30px, 760px); }
   .hero { padding: 57px 0 31px; }
   .hero p { font-size: 13px; }
