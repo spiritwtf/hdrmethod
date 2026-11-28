@@ -1,6 +1,6 @@
 import { getFFmpeg, terminateFFmpeg } from "./ffmpeg.js";
 import { analyzeVideo, mountInputFile, releaseInputFile, verifyDecoder } from "./video-analyzer.js";
-import { processHDR10 } from "./hdr-processor.js";
+import { getHDR10OutputDimensions, processHDR10 } from "./hdr-processor.js";
 import {
   formatBytes,
   formatDuration,
@@ -181,6 +181,7 @@ function updateCompatibilityState() {
   const metadata = state.metadata;
   if (!metadata) return;
   elements.compatibilityNotice.classList.add("hidden");
+  elements.compatibilityNotice.textContent = "";
   if (!hasSupportedDimensions(metadata)) {
     elements.compatibilityNotice.textContent =
       "This video needs known, even dimensions for 10-bit 4:2:0 HEVC. The converter will not resize the source video.";
@@ -198,6 +199,18 @@ function updateCompatibilityState() {
       "The file has BT.709 matrix metadata but omits primaries and transfer tags. Those missing tags are treated as BT.709 SDR; confirm this matches the source.";
     elements.compatibilityNotice.classList.remove("hidden");
   }
+  if (hasSupportedDimensions(metadata)) {
+    const outputDimensions = getHDR10OutputDimensions(metadata);
+    if (outputDimensions.downscaled) {
+      const downscaleWarning =
+        `4K source detected. HDR10 output will be automatically downscaled to ${outputDimensions.width} × ${outputDimensions.height} (1080p maximum), preserving aspect ratio and frame rate.`;
+      elements.compatibilityNotice.textContent = [
+        elements.compatibilityNotice.textContent,
+        downscaleWarning,
+      ].filter(Boolean).join(" ");
+      elements.compatibilityNotice.classList.remove("hidden");
+    }
+  }
   elements.startButton.disabled = state.busy || !isConvertible();
   if (state.busy) return;
   if (!isConvertible()) {
@@ -205,12 +218,21 @@ function updateCompatibilityState() {
     elements.processMessage.textContent = !hasSupportedDimensions(metadata)
       ? "10-bit 4:2:0 HEVC requires known, even video dimensions; the source will not be resized."
       : "Only BT.709 SDR input can be converted unless force processing is enabled.";
-  } else if (!metadata.isSDR) {
-    setStatus("Ready to force convert");
-    elements.processMessage.textContent = "Forced conversion will interpret the source color metadata as BT.709 SDR.";
   } else {
-    setStatus("Ready to convert");
-    elements.processMessage.textContent = "Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.";
+    const outputDimensions = getHDR10OutputDimensions(metadata);
+    setStatus(metadata.isSDR ? "Ready to convert" : "Ready to force convert");
+    const messages = [];
+    if (!metadata.isSDR) {
+      messages.push("Forced conversion will interpret the source color metadata as BT.709 SDR.");
+    } else {
+      messages.push("Ready to convert locally with zscale and the multithreaded libx265 Main 10 encoder.");
+    }
+    if (outputDimensions.downscaled) {
+      messages.push(
+        `The 4K source will be downscaled to ${outputDimensions.width} × ${outputDimensions.height} (1080p maximum).`,
+      );
+    }
+    elements.processMessage.textContent = messages.join(" ");
   }
 }
 
@@ -293,6 +315,12 @@ async function selectFile(file) {
     if (generation !== state.generation) return;
     state.metadata = metadata;
     renderMetadata(metadata);
+    const outputDimensions = getHDR10OutputDimensions(metadata);
+    if (outputDimensions.downscaled) {
+      showToast(
+        `4K source detected. It will be automatically downscaled to ${outputDimensions.width} × ${outputDimensions.height} (1080p maximum).`,
+      );
+    }
     clearIndeterminateProgress();
   } catch (error) {
     if (generation !== state.generation) return;
@@ -386,7 +414,9 @@ async function startProcessing() {
     const outputFilename = `${safeOutputBaseName(file.name)}_HDR10.mp4`;
     elements.exportPreview.src = state.outputUrl;
     elements.outputName.textContent = outputFilename;
-    elements.outputStats.textContent = `${formatBytes(output.byteLength)} · ${metadata.display.resolution} · ${metadata.display.fps}`;
+    const outputDimensions = getHDR10OutputDimensions(metadata);
+    const outputResolution = `${outputDimensions.width} × ${outputDimensions.height}`;
+    elements.outputStats.textContent = `${formatBytes(output.byteLength)} · ${outputResolution} · ${metadata.display.fps}`;
     elements.downloadButton.href = state.outputUrl;
     elements.downloadButton.download = outputFilename;
     elements.exportCard.classList.remove("hidden");

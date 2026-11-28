@@ -8,7 +8,7 @@ A static, browser-based BT.709 SDR-to-10-bit HEVC Main 10 HDR10-compatible conve
 - Warns and blocks already-HDR, unsupported, or insufficiently tagged input by default; an explicit force-processing checkbox can override color metadata detection when the user knows the source is SDR.
 - Adjustable 0–100 nominal HDR peak target, from 100 to 1000 nits. A setting of 0 still converts the pixels to BT.2020/PQ.
 - `zscale` pixel conversion through a 16-bit linear-light intermediate, then 10-bit 4:2:0 HEVC Main 10 encoding with `libx265`.
-- x265 quality encoding (`medium`, CRF 18) with automatic thread pools; source resolution, timestamps and audio are preserved where possible.
+- x265 quality encoding (`medium`, CRF 18); 4K sources are warned and automatically downscaled to a 1080p maximum while preserving aspect ratio and frame rate.
 - Output verification checks the HEVC Main 10 profile, 10-bit pixel format, and BT.2020/PQ color signaling before enabling download.
 - Real FFmpeg progress when available, cancel by terminating the worker, before/after wipe comparison and local Blob download.
 
@@ -38,13 +38,13 @@ The navigation GitHub links point to https://github.com/spiritwtf/hdrmethod.
 
 ## FFmpeg.wasm HDR pipeline
 
-By default, the app accepts BT.709 SDR input only. The optional force-processing checkbox bypasses color metadata classification and explicitly interprets the input primaries, transfer and matrix as BT.709; it cannot bypass decoder, file-size or even-dimension requirements. Forcing actual HDR or other color formats can produce incorrect color and brightness. `zscale` linearizes the source at a 100-nit reference, converts to BT.2020/PQ, and writes `yuv420p10le`; the intensity control sets the nominal peak from 100 to 1000 nits. A 16-bit intermediate is used because float `lutrgb` processing exceeds the tested WASM core's memory/format limits. The filter worker count is limited to one for reliable zscale operation; x265 uses its own automatic thread pool. The MP4 output is tagged as BT.2020, SMPTE ST 2084, limited-range and `hvc1`, then checked with FFprobe.
+By default, the app accepts BT.709 SDR input only. The optional force-processing checkbox bypasses color metadata classification and explicitly interprets the input primaries, transfer and matrix as BT.709; it cannot bypass decoder, file-size or even-dimension requirements. Forcing actual HDR or other color formats can produce incorrect color and brightness. 4K-class sources are warned about and scaled to fit within 1920×1080 (or 1080×1920 for portrait video), preserving aspect ratio and frame rate. `zscale` linearizes the source at a 100-nit reference, converts to BT.2020/PQ, and writes `yuv420p10le`; the intensity control sets the nominal peak from 100 to 1000 nits. A 16-bit intermediate is used because float `lutrgb` processing exceeds the tested WASM core's memory/format limits. The filter worker count is limited to one for reliable zscale operation. x265 normally uses its automatic thread pool, but outputs at or above 180 megapixels per second use a two-thread pool and one frame thread, with decoding limited to one thread, to reduce peak memory. The MP4 output is tagged as BT.2020, SMPTE ST 2084, limited-range and `hvc1`, then checked with FFprobe.
 
 This is a pixel conversion, not metadata-only tagging. It cannot restore detail absent from the source. Mastering-display and content-light metadata are not synthesized because they cannot be accurately inferred from an SDR file; output is therefore described as HDR10-compatible rather than claiming source mastering metadata.
 
 ## Formats and compatibility
 
-The file picker highlights MP4, MKV, MOV and WEBM, but compatibility depends on demuxers and decoders in the pinned FFmpeg core. The app probes the file and attempts to decode a frame; filename extensions do not establish codec support. Inputs must be BT.709 SDR and have even dimensions for 4:2:0 output. Source resolution is not resized. Browser preview support is separate from FFmpeg support.
+The file picker highlights MP4, MKV, MOV and WEBM, but compatibility depends on demuxers and decoders in the pinned FFmpeg core. The app probes the file and attempts to decode a frame; filename extensions do not establish codec support. Inputs must be BT.709 SDR and have even dimensions for 4:2:0 output. 4K-class input is resized as described above; lower-resolution input is not resized. Browser preview support is separate from FFmpeg support.
 
 Use a current desktop browser with WebAssembly threads, SharedArrayBuffer, service workers and cross-origin isolation enabled. The page must be served from HTTPS or localhost. This path does not require WebGPU or a browser HEVC encoder.
 
